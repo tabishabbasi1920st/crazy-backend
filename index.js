@@ -138,7 +138,6 @@ app.post("/login", async (req, res) => {
 
 // profile-info api
 app.get("/user-info", authenticateToken, async (req, res) => {
-  console.log("user info hitted.");
   try {
     const { email } = req;
     const user = await UserModel.find({ email });
@@ -151,5 +150,18 @@ app.get("/user-info", authenticateToken, async (req, res) => {
     }
   } catch (err) {
     console.log("Error while  getting the user info : ", err);
+  }
+});
+
+// all chats api
+app.post("/all-chats", async (req, res) => {
+  const { user } = req.body;
+  console.log(user);
+  try {
+    const allChats = await UserModel.find({ email: { $ne: user } });
+    res.status(200);
+    res.json({ allChats });
+  } catch (err) {
+    console.log("Error while fetching all chats:", err);
   }
 });
