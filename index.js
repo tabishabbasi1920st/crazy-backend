@@ -8,6 +8,7 @@ const cors = require("cors");
 const app = express();
 const mongoose = require("mongoose");
 const LoginOrRegisterModel = require("./models/loginOrRegisterModel");
+const { sign } = require("jsonwebtoken");
 
 app.use(express.json({ limit: "50mb" }));
 app.use(cors());
