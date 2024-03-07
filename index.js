@@ -1,11 +1,13 @@
 require("dotenv").config();
 const fs = require("fs");
-const https = require("https");
+const http = require("http");
 const { Server } = require("socket.io");
 const express = require("express");
+const { hash, compare } = require("bcrypt");
 const cors = require("cors");
 const app = express();
 const mongoose = require("mongoose");
+const LoginOrRegisterModel = require("./models/loginOrRegisterModel");
 
 app.use(express.json({ limit: "50mb" }));
 app.use(cors());
@@ -16,13 +18,7 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Use HTTPS
-const httpsOptions = {
-  key: fs.readFileSync("server.key"),
-  cert: fs.readFileSync("server.cert"),
-};
-
-const server = https.createServer(httpsOptions, app);
+const server = http.createServer(app);
 
 // Connect to mongodb atlas.
 const MONGODB_URI = process.env.MONGODB_URI;
