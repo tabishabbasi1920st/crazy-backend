@@ -7,11 +7,15 @@ const { hash, compare } = require("bcrypt");
 const cors = require("cors");
 const app = express();
 const mongoose = require("mongoose");
+const { sign, verify } = require("jsonwebtoken");
 const LoginOrRegisterModel = require("./models/loginOrRegisterModel");
-const { sign } = require("jsonwebtoken");
+const UserModel = require("./models/userModel");
 
 app.use(express.json({ limit: "50mb" }));
 app.use(cors());
+
+// Serving folders..
+app.use("/reg_users", express.static("reg_users"));
 
 app.get("/", (req, res) => {
   res.send("<h1>Server is running at port 5000</h1>");
@@ -129,5 +133,23 @@ app.post("/login", async (req, res) => {
       res.status(400);
       res.send({ message: "Invalid Password" });
     }
+  }
+});
+
+// profile-info api
+app.get("/user-info", authenticateToken, async (req, res) => {
+  console.log("user info hitted.");
+  try {
+    const { email } = req;
+    const user = await UserModel.find({ email });
+    if (user.length === 0) {
+      res.status(400);
+      res.send({ message: "Something went wrong" });
+    } else {
+      res.status(200);
+      res.send({ message: user });
+    }
+  } catch (err) {
+    console.log("Error while  getting the user info : ", err);
   }
 });
