@@ -10,6 +10,7 @@ const mongoose = require("mongoose");
 const { sign, verify } = require("jsonwebtoken");
 const LoginOrRegisterModel = require("./models/loginOrRegisterModel");
 const UserModel = require("./models/userModel");
+const ChatMessage = require("./models/chatModel");
 
 app.use(express.json({ limit: "50mb" }));
 app.use(cors());
@@ -165,8 +166,132 @@ app.post("/all-chats", async (req, res) => {
   }
 });
 
+// my-chats api
+app.get("/my-chats", async (req, res) => {
+  const { me, to } = req.query;
+
+  try {
+    const messages = await ChatMessage.find({
+      $or: [
+        { sentBy: me, sentTo: to },
+        { sentBy: to, sentTo: me },
+      ],
+    }).sort({ dateTime: 1 });
+
+    res.status(200);
+    res.json(messages);
+  } catch (err) {
+    console.log("Error while fetching  my chat list : ", err);
+  }
+});
+
+const msgDelieveryStatusConstants = {
+  pending: "PENDING",
+  sent: "SENT",
+  seen: "SEEN",
+};
+
+const connectedUsers = {};
+
 io.on("connection", (socket) => {
   console.log("new socket connected", socket.id);
 
   io.emit("connection", "You are connected.");
+
+  // if a user connected then add him into onlineUsers.
+  socket.on("AddUser", (emailOfUser) => {
+    connectedUsers[emailOfUser] = socket.id;
+    io.emit("connectedUsers", Object.keys(connectedUsers));
+  });
+
+  console.log(connectedUsers);
+
+  socket.on("TextMessage", async (message, callback) => {
+    const { id, sentTo, sentBy, content, timestamp, type, delieveryStatus } =
+      message;
+
+    try {
+      const newChatMessage = new ChatMessage({
+        id,
+        content,
+        timestamp,
+        sentBy,
+        sentTo,
+        type,
+        delieveryStatus,
+      });
+
+      // Adding message into database wether user is offline or online it doesn't matter.
+      const savedMessage = await newChatMessage.save();
+      console.log("saved message", savedMessage);
+
+      // Checking is sentTo user connected or not.
+      if (connectedUsers[sentTo]) {
+        // If user connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newChatMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly online", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+
+        // Sending messsage to client means sentTo.
+        const socketId = connectedUsers[sentTo];
+        io.to(socketId).emit("TextMessage", {
+          ...message,
+          delieveryStatus: msgDelieveryStatusConstants.sent,
+        });
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+        });
+      } else {
+        // if user offline
+        console.log("User is offline");
+
+        // If user not connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newChatMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly offline", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+        });
+      }
+    } catch (err) {
+      console.error("Error while sending private chat into db", err);
+      callback({ success: false, msg: "Message not sent." });
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected", socket.id);
+
+    // Find and remove the disconnected user
+    const disconnectedUser = Object.entries(connectedUsers).find(
+      ([key, value]) => value === socket.id
+    );
+
+    if (disconnectedUser) {
+      const [disconnectedEmail] = disconnectedUser;
+      delete connectedUsers[disconnectedEmail];
+      io.emit("connectedUsers", Object.keys(connectedUsers));
+      console.log(`User ${disconnectedEmail} removed from connected users.`);
+    }
+  });
 });
