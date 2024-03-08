@@ -156,7 +156,6 @@ app.get("/user-info", authenticateToken, async (req, res) => {
 // all chats api
 app.post("/all-chats", async (req, res) => {
   const { user } = req.body;
-  console.log(user);
   try {
     const allChats = await UserModel.find({ email: { $ne: user } });
     res.status(200);
@@ -164,4 +163,10 @@ app.post("/all-chats", async (req, res) => {
   } catch (err) {
     console.log("Error while fetching all chats:", err);
   }
+});
+
+io.on("connection", (socket) => {
+  console.log("new socket connected", socket.id);
+
+  io.emit("connection", "You are connected.");
 });
