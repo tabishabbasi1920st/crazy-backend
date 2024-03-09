@@ -17,6 +17,7 @@ app.use(cors());
 
 // Serving folders..
 app.use("/reg_users", express.static("reg_users"));
+app.use("/uploads_audio", express.static("uploads_audio"));
 
 app.get("/", (req, res) => {
   res.send("<h1>Server is running at port 5000</h1>");
@@ -277,6 +278,131 @@ io.on("connection", (socket) => {
       console.error("Error while sending private chat into db", err);
       callback({ success: false, msg: "Message not sent." });
     }
+  });
+
+  socket.on("NewMsgReaded", (newMessage) => {
+    const { id, sentBy, sentTo } = newMessage;
+    console.log("Emitting back");
+    io.to(connectedUsers[sentTo]).emit("NewMsgReaded", { msgId: id });
+  });
+
+  socket.on("updateMyMessageStatus", async (data) => {
+    const { me, to } = data;
+
+    const updatedMessages = await ChatMessage.find({
+      sentTo: me,
+      delieveryStatus: {
+        $in: [
+          msgDelieveryStatusConstants.pending,
+          msgDelieveryStatusConstants.sent,
+        ],
+      },
+    });
+
+    await ChatMessage.updateMany(
+      {
+        sentTo: me,
+        delieveryStatus: {
+          $in: [
+            msgDelieveryStatusConstants.pending,
+            msgDelieveryStatusConstants.sent,
+          ],
+        },
+      },
+      { $set: { delieveryStatus: msgDelieveryStatusConstants.seen } }
+    );
+
+    io.to(connectedUsers[to]).emit("iHaveSeenAllMessages", updatedMessages);
+  });
+
+  socket.on("typing", (msg) => {
+    const { sentBy, sentTo, isTyping } = msg;
+    console.log(isTyping);
+    io.to(connectedUsers[sentTo]).emit("typing", { sentBy, sentTo, isTyping });
+  });
+
+  socket.on("RecordedAudioMessage", async (message, callback) => {
+    try {
+      const { id, content, timestamp, sentBy, sentTo, type, delieveryStatus } =
+        message;
+      const { uploaded_audio } = content;
+
+      // convert base64 audio data to buffer
+      const audioBuffer = Buffer.from(uploaded_audio, "base64");
+
+      // Save the buffer to a file
+      fs.writeFileSync(`uploads_audio/audio_${id}.wav`, audioBuffer);
+
+      const newAudioMessage = new ChatMessage({
+        id,
+        content: `uploads_audio/audio_${id}.wav`,
+        timestamp,
+        sentBy,
+        sentTo,
+        type,
+        delieveryStatus,
+      });
+
+      const savedAudioMessage = await newAudioMessage.save();
+      console.log(savedAudioMessage);
+
+      if (connectedUsers[sentTo]) {
+        // If user connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newAudioMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly online", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+
+        // Sending messsage to client means sentTo.
+        const socketId = connectedUsers[sentTo];
+        io.to(socketId).emit("RecordedAudioMessage", {
+          ...savedAudioMessage,
+          delieveryStatus: msgDelieveryStatusConstants.sent,
+        });
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      } else {
+        console.log("User is offline");
+        // If user not connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newAudioMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        console.log(">>>", result);
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly offline", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      }
+    } catch (err) {
+      callback({ success: false, message: "Message not sent." });
+      console.log("Error while storing audio in the local system.", err);
+    }
+  });
+
+  socket.on("recordingAudio", (msg) => {
+    console.log(msg);
   });
 
   socket.on("disconnect", () => {

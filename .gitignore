@@ -1,3 +1,5 @@
 /node_modules
 .env
 /reg_users
+/public
+/uploads_audio
