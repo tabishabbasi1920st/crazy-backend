@@ -402,7 +402,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("recordingAudio", (msg) => {
-    console.log(msg);
+    const { sentBy, sentTo, isRecordingAudio } = msg;
+    console.log(sentBy, sentTo, isRecordingAudio);
+    io.to(connectedUsers[sentTo]).emit("recordingAudio", {
+      sentBy,
+      sentTo,
+      isRecordingAudio,
+    });
   });
 
   socket.on("disconnect", () => {
