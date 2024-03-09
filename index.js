@@ -11,6 +11,7 @@ const { sign, verify } = require("jsonwebtoken");
 const LoginOrRegisterModel = require("./models/loginOrRegisterModel");
 const UserModel = require("./models/userModel");
 const ChatMessage = require("./models/chatModel");
+const { v4 } = require("uuid");
 
 app.use(express.json({ limit: "50mb" }));
 app.use(cors());
@@ -186,6 +187,27 @@ app.get("/my-chats", async (req, res) => {
   }
 });
 
+// upload recordedAudioMessage
+app.post("/upload/recorded-audio-message", (req, res) => {
+  try {
+    const { recordedAudio } = req.body;
+
+    const randomId = v4();
+    const bufferedData = new Buffer.from(recordedAudio, "base64");
+    fs.writeFileSync(`uploads_audio/audio_${randomId}.wav`, bufferedData);
+
+    const savedAudioUrl = `uploads_audio/audio_${randomId}.wav`;
+    console.log("saved recordedAudio successfully", savedAudioUrl);
+
+    res.status(200);
+    res.send({ savedAudioUrl });
+  } catch (error) {
+    res.status(400);
+    res.send({ message: "Error" });
+    console.log("error in recorded-audio-message api");
+  }
+});
+
 const msgDelieveryStatusConstants = {
   pending: "PENDING",
   sent: "SENT",
@@ -322,20 +344,22 @@ io.on("connection", (socket) => {
   });
 
   socket.on("RecordedAudioMessage", async (message, callback) => {
+    console.log("Audio message recorded");
     try {
       const { id, content, timestamp, sentBy, sentTo, type, delieveryStatus } =
         message;
-      const { uploaded_audio } = content;
 
-      // convert base64 audio data to buffer
-      const audioBuffer = Buffer.from(uploaded_audio, "base64");
+      // const { uploaded_audio } = content;
 
-      // Save the buffer to a file
-      fs.writeFileSync(`uploads_audio/audio_${id}.wav`, audioBuffer);
+      // // convert base64 audio data to buffer
+      // const audioBuffer = Buffer.from(uploaded_audio, "base64");
+
+      // // Save the buffer to a file
+      // fs.writeFileSync(`uploads_audio/audio_${id}.wav`, audioBuffer);
 
       const newAudioMessage = new ChatMessage({
         id,
-        content: `uploads_audio/audio_${id}.wav`,
+        content,
         timestamp,
         sentBy,
         sentTo,
@@ -381,7 +405,7 @@ io.on("connection", (socket) => {
           { new: true } // Return the updated document.
         );
 
-        console.log(">>>", result);
+        console.log(result);
 
         // checking wether status  has been changed or not.
         if (result) {
@@ -409,6 +433,10 @@ io.on("connection", (socket) => {
       sentTo,
       isRecordingAudio,
     });
+  });
+
+  socket.on("AudioFileMessage", async (msg, callback) => {
+    console.log(msg);
   });
 
   socket.on("disconnect", () => {
