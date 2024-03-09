@@ -13,7 +13,7 @@ const UserModel = require("./models/userModel");
 const ChatMessage = require("./models/chatModel");
 const { v4 } = require("uuid");
 
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: "1000mb" }));
 app.use(cors());
 
 // Serving folders..
@@ -205,6 +205,29 @@ app.post("/upload/recorded-audio-message", (req, res) => {
     res.status(400);
     res.send({ message: "Error" });
     console.log("error in recorded-audio-message api");
+  }
+});
+
+// upload audio file messages
+app.post("/upload/audio", async (req, res) => {
+  try {
+    const { audio } = req.body;
+    const randomId = v4();
+    const bufferedData = new Buffer.from(audio, "base64");
+    fs.writeFileSync(
+      `uploads_audio/audio_${randomId}_simple-audio.wav`,
+      bufferedData
+    );
+
+    const savedAudioUrl = `uploads_audio/audio_${randomId}_simple-audio.wav`;
+    console.log("saved audio successfully", savedAudioUrl);
+
+    res.status(200);
+    res.send({ savedAudioUrl });
+  } catch (err) {
+    res.status(400);
+    res.send({ message: "Error" });
+    console.log("error in simple-audio-message api");
   }
 });
 
@@ -435,8 +458,77 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("AudioFileMessage", async (msg, callback) => {
-    console.log(msg);
+  socket.on("AudioFileMessage", async (message, callback) => {
+    try {
+      const { id, content, timestamp, sentBy, sentTo, type, delieveryStatus } =
+        message;
+
+      const newAudioMessage = new ChatMessage({
+        id,
+        content,
+        timestamp,
+        sentBy,
+        sentTo,
+        type,
+        delieveryStatus,
+      });
+
+      const savedAudioMessage = await newAudioMessage.save();
+      console.log(savedAudioMessage);
+
+      if (connectedUsers[sentTo]) {
+        // If user connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newAudioMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly online", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+
+        // Sending messsage to client means sentTo.
+        const socketId = connectedUsers[sentTo];
+        io.to(socketId).emit("AudioFileMessage", {
+          ...savedAudioMessage,
+          delieveryStatus: msgDelieveryStatusConstants.sent,
+        });
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      } else {
+        console.log("User is offline");
+        // If user not connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newAudioMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        console.log(result);
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly offline", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      }
+    } catch (err) {
+      callback({ success: false, message: "Message not sent." });
+      console.log("Error while storing simple-audio in the local system.", err);
+    }
   });
 
   socket.on("disconnect", () => {
