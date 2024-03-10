@@ -20,6 +20,7 @@ app.use(cors());
 app.use("/reg_users", express.static("reg_users"));
 app.use("/uploads_audio", express.static("uploads_audio"));
 app.use("/uploads_video", express.static("uploads_video"));
+app.use("/uploads_image", express.static("uploads_image"));
 
 app.get("/", (req, res) => {
   res.send("<h1>Server is running at port 5000</h1>");
@@ -249,6 +250,26 @@ app.post("/upload/recorded-video-message", async (req, res) => {
     res.status(400);
     res.send({ message: "Error" });
     console.log("Error in recorded video message api");
+  }
+});
+
+// upload simple image message.
+app.post("/upload/simple-image", async (req, res) => {
+  try {
+    const { image } = req.body;
+    const randomId = v4();
+    const bufferedData = new Buffer.from(image, "base64");
+    fs.writeFileSync(`uploads_image/image_${randomId}.png`, bufferedData);
+
+    const savedImageUrl = `uploads_image/image_${randomId}.png`;
+    console.log("saved simple message successfully: ", savedImageUrl);
+
+    res.status(200);
+    res.send({ savedImageUrl });
+  } catch (err) {
+    res.status(400);
+    res.send({ message: "Error" });
+    console.log("Error in simple image api");
   }
 });
 
@@ -548,7 +569,7 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       callback({ success: false, message: "Message not sent." });
-      console.log("Error while storing simple-audio in the local system.", err);
+      console.log("Error in simple-audio ", err);
     }
   });
 
@@ -619,7 +640,83 @@ io.on("connection", (socket) => {
           actualMsg: result,
         });
       }
-    } catch (err) {}
+    } catch (err) {
+      callback({ success: false, message: "Message not sent." });
+      console.log("Error in recordedvideomessage.", err);
+    }
+  });
+
+  socket.on("SimpleImageMessage", async (message, callback) => {
+    try {
+      const { id, content, timestamp, sentBy, sentTo, type, delieveryStatus } =
+        message;
+
+      const newSimpleImageMessage = new ChatMessage({
+        id,
+        content,
+        timestamp,
+        sentBy,
+        sentTo,
+        type,
+        delieveryStatus,
+      });
+
+      const savedSimpleImageMessage = await newSimpleImageMessage.save();
+      console.log(savedSimpleImageMessage);
+
+      if (connectedUsers[sentTo]) {
+        // If user connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newSimpleImageMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly online", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+
+        // Sending messsage to client means sentTo.
+        const socketId = connectedUsers[sentTo];
+        io.to(socketId).emit("SimpleImageMessage", {
+          ...savedSimpleImageMessage,
+          delieveryStatus: msgDelieveryStatusConstants.sent,
+        });
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      } else {
+        console.log("User is offline");
+        // If user not connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newSimpleImageMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        console.log(result);
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly offline", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      }
+    } catch (err) {
+      callback({ success: false, message: "Message not sent." });
+      console.log("Error in recordedvideomessage.", err);
+    }
   });
 
   socket.on("disconnect", () => {
