@@ -239,9 +239,9 @@ app.post("/upload/recorded-video-message", async (req, res) => {
     const { recordedVideo } = req.body;
     const randomId = v4();
     const bufferedData = new Buffer.from(recordedVideo, "base64");
-    fs.writeFileSync(`uploads_video/video_${randomId}.wav`, bufferedData);
+    fs.writeFileSync(`uploads_video/video_${randomId}.mp4`, bufferedData);
 
-    const savedVideoUrl = `uploads_video/video_${randomId}.wav`;
+    const savedVideoUrl = `uploads_video/video_${randomId}.mp4`;
     console.log("Saved recorded video successfully", savedVideoUrl);
 
     res.status(200);
@@ -270,6 +270,51 @@ app.post("/upload/simple-image", async (req, res) => {
     res.status(400);
     res.send({ message: "Error" });
     console.log("Error in simple image api");
+  }
+});
+
+// upload simple video message.
+app.post("/upload/simple-video-message", async (req, res) => {
+  try {
+    const { video } = req.body;
+    const randomId = v4();
+    const bufferedData = new Buffer.from(video, "base64");
+    fs.writeFileSync(
+      `uploads_video/video_${randomId}_simple_video.mp4`,
+      bufferedData
+    );
+
+    const savedVideoUrl = `uploads_video/video_${randomId}_simple_video.mp4`;
+    console.log("saved simple video message successfully.", savedVideoUrl);
+
+    res.status(200).send({ savedVideoUrl });
+  } catch (err) {
+    res.status(400);
+    res.send({ message: "Error" });
+    console.log("Error in simple video api");
+  }
+});
+
+// upload captured image message.
+app.post("/upload/captured-image", async (req, res) => {
+  try {
+    const { capturedImage } = req.body;
+    const randomId = v4();
+    const bufferedData = new Buffer.from(capturedImage, "base64");
+    fs.writeFileSync(
+      `uploads_image/image_${randomId}_captured_image.png`,
+      bufferedData
+    );
+
+    const savedCapturedImageUrl = `uploads_image/image_${randomId}_captured_image.png`;
+    console.log("saved simple message successfully: ", savedCapturedImageUrl);
+
+    res.status(200);
+    res.send({ savedCapturedImageUrl });
+  } catch (err) {
+    res.status(400);
+    res.send({ message: "Error" });
+    console.log("Error in captured image api");
   }
 });
 
@@ -716,6 +761,152 @@ io.on("connection", (socket) => {
     } catch (err) {
       callback({ success: false, message: "Message not sent." });
       console.log("Error in recordedvideomessage.", err);
+    }
+  });
+
+  socket.on("SimpleVideoMessage", async (message, callback) => {
+    try {
+      const { id, content, timestamp, sentBy, sentTo, type, delieveryStatus } =
+        message;
+
+      const newSimpleVideoMessage = new ChatMessage({
+        id,
+        content,
+        timestamp,
+        sentBy,
+        sentTo,
+        type,
+        delieveryStatus,
+      });
+
+      const savedSimpleVideoMessage = await newSimpleVideoMessage.save();
+      console.log(savedSimpleVideoMessage);
+
+      if (connectedUsers[sentTo]) {
+        // If user connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newSimpleVideoMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly online", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+
+        // Sending messsage to client means sentTo.
+        const socketId = connectedUsers[sentTo];
+        io.to(socketId).emit("SimpleVideoMessage", {
+          ...savedSimpleVideoMessage,
+          delieveryStatus: msgDelieveryStatusConstants.sent,
+        });
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      } else {
+        console.log("User is offline");
+        // If user not connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newSimpleVideoMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        console.log(result);
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly offline", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      }
+    } catch (err) {
+      callback({ success: false, message: "Message not sent." });
+      console.log("Error in recordedvideomessage.", err);
+    }
+  });
+
+  socket.on("CapturedImageMessage", async (message, callback) => {
+    try {
+      const { id, content, timestamp, sentBy, sentTo, type, delieveryStatus } =
+        message;
+
+      const newCapturedImageMessage = new ChatMessage({
+        id,
+        content,
+        timestamp,
+        sentBy,
+        sentTo,
+        type,
+        delieveryStatus,
+      });
+
+      const savedCapturedImageMessage = await newCapturedImageMessage.save();
+      console.log(savedCapturedImageMessage);
+
+      if (connectedUsers[sentTo]) {
+        // If user connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newCapturedImageMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly online", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+
+        // Sending messsage to client means sentTo.
+        const socketId = connectedUsers[sentTo];
+        io.to(socketId).emit("CapturedImageMessage", {
+          ...savedCapturedImageMessage,
+          delieveryStatus: msgDelieveryStatusConstants.sent,
+        });
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      } else {
+        console.log("User is offline");
+        // If user not connected then message's delievery status is updating as sent.
+        const result = await ChatMessage.findOneAndUpdate(
+          { id: newCapturedImageMessage.id },
+          { $set: { delieveryStatus: msgDelieveryStatusConstants.sent } },
+          { new: true } // Return the updated document.
+        );
+
+        console.log(result);
+
+        // checking wether status  has been changed or not.
+        if (result) {
+          console.log("Updated succesfuly offline", result);
+        } else {
+          console.log("NO document found with this id");
+        }
+        callback({
+          success: true,
+          msg: msgDelieveryStatusConstants.sent,
+          actualMsg: result,
+        });
+      }
+    } catch (err) {
+      callback({ success: false, message: "Message not sent." });
+      console.log("Error in captured image message socket.", err);
     }
   });
 
