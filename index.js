@@ -189,6 +189,83 @@ app.get("/my-chats", async (req, res) => {
   }
 });
 
+// get all image messages for customization sidebar.
+app.get("/all-image-messages", async (req, res) => {
+  const { me, to } = req.query;
+
+  try {
+    const messages = await ChatMessage.find({
+      $and: [
+        {
+          $or: [
+            { sentBy: me, sentTo: to },
+            { sentBy: to, sentTo: me },
+          ],
+        },
+        {
+          $or: [{ type: "IMAGE" }, { type: "CAPTURED_IMAGE" }],
+        },
+      ],
+    }).sort({ dateTime: 1 });
+
+    res.status(200);
+    res.json(messages);
+  } catch (err) {
+    console.log("Error while fetching my chat list: ", err);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// get all video messages for customization sidebar.
+app.get("/all-video-messages", async (req, res) => {
+  const { me, to } = req.query;
+  try {
+    const messages = await ChatMessage.find({
+      $and: [
+        {
+          $or: [
+            { sentBy: me, sentTo: to },
+            { sentBy: to, sentTo: me },
+          ],
+        },
+        {
+          $or: [{ type: "VIDEO" }, { type: "CAPTURED_VIDEO" }],
+        },
+      ],
+    }).sort({ dateTime: 1 });
+
+    res.status(200);
+    res.json(messages);
+  } catch (err) {
+    console.log("Error while fetching  ALL VIDEOS API list : ", err);
+  }
+});
+
+// get all audio messages for customization sidebar.
+app.get("/all-audio-messages", async (req, res) => {
+  const { me, to } = req.query;
+  try {
+    const messages = await ChatMessage.find({
+      $and: [
+        {
+          $or: [
+            { sentBy: me, sentTo: to },
+            { sentBy: to, sentTo: me },
+          ],
+        },
+        {
+          $or: [{ type: "AUDIO" }, { type: "CAPTURED_AUDIO" }],
+        },
+      ],
+    }).sort({ dateTime: 1 });
+
+    res.status(200);
+    res.json(messages);
+  } catch (err) {
+    console.log("Error while fetching  ALL VIDEOS API list : ", err);
+  }
+});
+
 // upload recordedAudioMessage
 app.post("/upload/recorded-audio-message", (req, res) => {
   try {
@@ -542,6 +619,16 @@ io.on("connection", (socket) => {
       sentBy,
       sentTo,
       isRecordingAudio,
+    });
+  });
+
+  socket.on("recordingVideo", (msg) => {
+    const { sentBy, sentTo, isRecordingVideo } = msg;
+    console.log(sentBy, sentTo, isRecordingVideo);
+    io.to(connectedUsers[sentTo]).emit("recordingVideo", {
+      sentBy,
+      sentTo,
+      isRecordingVideo,
     });
   });
 
