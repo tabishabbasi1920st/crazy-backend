@@ -23,7 +23,7 @@ app.use("/uploads_video", express.static("uploads_video"));
 app.use("/uploads_image", express.static("uploads_image"));
 
 app.get("/", (req, res) => {
-  res.send("<h1>Server is running at port 5000</h1>");
+  res.send("<h1>Server is running</h1>");
 });
 
 const PORT = process.env.PORT || 5000;
