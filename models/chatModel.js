@@ -33,6 +33,9 @@ const chatSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  deleteFor: {
+    type: String,
+  },
 });
 
 const ChatMessage = mongoose.model("chattings", chatSchema);

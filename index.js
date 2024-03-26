@@ -85,13 +85,13 @@ const authenticateToken = (req, res, next) => {
 
 // Register user Api
 app.post("/register", async (req, res) => {
-  const { name, email, password, img } = req.body;
+  const { name, email, password } = req.body;
 
-  // Convert base 64 image data to buffer
-  const imageBuffer = Buffer.from(img, "base64");
+  // // Convert base 64 image data to buffer
+  // const imageBuffer = Buffer.from(img, "base64");
 
-  // Save the buffer to a file in your desired location
-  fs.writeFileSync(`reg_users/${email}_profile_image.png`, imageBuffer);
+  // // Save the buffer to a file in your desired location
+  // fs.writeFileSync(`reg_users/${email}_profile_image.png`, imageBuffer);
 
   try {
     const { name, email, password } = req.body;
@@ -105,10 +105,9 @@ app.post("/register", async (req, res) => {
     });
 
     const savedUser = await newUser.save();
-    console.log("User inserted into 'chatUser' collection:", savedUser);
     res.status(201).json(savedUser);
   } catch (err) {
-    console.log("Error in registering user : ", err);
+    console.error("Error in registering user : ", err);
     if (err.code === 11000) {
       // Duplicate key error (e.g., duplicate email)
       return res.status(400).json({ message: "Email already exists" });
@@ -143,6 +142,7 @@ app.post("/login", async (req, res) => {
 
 // profile-info api
 app.get("/user-info", authenticateToken, async (req, res) => {
+  console.log("hiiiiiiiiii", req.body);
   try {
     const { email } = req;
     const user = await UserModel.find({ email });
@@ -154,7 +154,7 @@ app.get("/user-info", authenticateToken, async (req, res) => {
       res.send({ message: user });
     }
   } catch (err) {
-    console.log("Error while  getting the user info : ", err);
+    console.error("Error while  getting the user info : ", err);
   }
 });
 
@@ -166,7 +166,7 @@ app.post("/all-chats", async (req, res) => {
     res.status(200);
     res.json({ allChats });
   } catch (err) {
-    console.log("Error while fetching all chats:", err);
+    console.error("Error while fetching all chats:", err);
   }
 });
 
@@ -185,7 +185,7 @@ app.get("/my-chats", async (req, res) => {
     res.status(200);
     res.json(messages);
   } catch (err) {
-    console.log("Error while fetching  my chat list : ", err);
+    console.error("Error while fetching  my chat list : ", err);
   }
 });
 
@@ -211,7 +211,7 @@ app.get("/all-image-messages", async (req, res) => {
     res.status(200);
     res.json(messages);
   } catch (err) {
-    console.log("Error while fetching my chat list: ", err);
+    console.error("Error while fetching my chat list: ", err);
     res.status(500).send("Internal Server Error");
   }
 });
@@ -237,7 +237,7 @@ app.get("/all-video-messages", async (req, res) => {
     res.status(200);
     res.json(messages);
   } catch (err) {
-    console.log("Error while fetching  ALL VIDEOS API list : ", err);
+    console.error("Error while fetching  ALL VIDEOS API list : ", err);
   }
 });
 
@@ -262,7 +262,7 @@ app.get("/all-audio-messages", async (req, res) => {
     res.status(200);
     res.json(messages);
   } catch (err) {
-    console.log("Error while fetching  ALL VIDEOS API list : ", err);
+    console.error("Error while fetching  ALL VIDEOS API list : ", err);
   }
 });
 
@@ -276,14 +276,13 @@ app.post("/upload/recorded-audio-message", (req, res) => {
     fs.writeFileSync(`uploads_audio/audio_${randomId}.wav`, bufferedData);
 
     const savedAudioUrl = `uploads_audio/audio_${randomId}.wav`;
-    console.log("saved recordedAudio successfully", savedAudioUrl);
 
     res.status(200);
     res.send({ savedAudioUrl });
   } catch (error) {
     res.status(400);
     res.send({ message: "Error" });
-    console.log("error in recorded-audio-message api");
+    console.error("error in recorded-audio-message api");
   }
 });
 
@@ -299,14 +298,13 @@ app.post("/upload/audio", async (req, res) => {
     );
 
     const savedAudioUrl = `uploads_audio/audio_${randomId}_simple-audio.wav`;
-    console.log("saved audio successfully", savedAudioUrl);
 
     res.status(200);
     res.send({ savedAudioUrl });
   } catch (err) {
     res.status(400);
     res.send({ message: "Error" });
-    console.log("error in simple-audio-message api");
+    console.error("error in simple-audio-message api");
   }
 });
 
@@ -319,14 +317,13 @@ app.post("/upload/recorded-video-message", async (req, res) => {
     fs.writeFileSync(`uploads_video/video_${randomId}.mp4`, bufferedData);
 
     const savedVideoUrl = `uploads_video/video_${randomId}.mp4`;
-    console.log("Saved recorded video successfully", savedVideoUrl);
 
     res.status(200);
     res.send({ savedVideoUrl });
   } catch (err) {
     res.status(400);
     res.send({ message: "Error" });
-    console.log("Error in recorded video message api");
+    console.error("Error in recorded video message api");
   }
 });
 
@@ -336,17 +333,17 @@ app.post("/upload/simple-image", async (req, res) => {
     const { image } = req.body;
     const randomId = v4();
     const bufferedData = new Buffer.from(image, "base64");
+
     fs.writeFileSync(`uploads_image/image_${randomId}.png`, bufferedData);
 
     const savedImageUrl = `uploads_image/image_${randomId}.png`;
-    console.log("saved simple message successfully: ", savedImageUrl);
 
     res.status(200);
     res.send({ savedImageUrl });
   } catch (err) {
     res.status(400);
     res.send({ message: "Error" });
-    console.log("Error in simple image api");
+    console.error("Error in simple image api");
   }
 });
 
@@ -362,13 +359,12 @@ app.post("/upload/simple-video-message", async (req, res) => {
     );
 
     const savedVideoUrl = `uploads_video/video_${randomId}_simple_video.mp4`;
-    console.log("saved simple video message successfully.", savedVideoUrl);
 
     res.status(200).send({ savedVideoUrl });
   } catch (err) {
     res.status(400);
     res.send({ message: "Error" });
-    console.log("Error in simple video api");
+    console.error("Error in simple video api");
   }
 });
 
@@ -384,14 +380,36 @@ app.post("/upload/captured-image", async (req, res) => {
     );
 
     const savedCapturedImageUrl = `uploads_image/image_${randomId}_captured_image.png`;
-    console.log("saved simple message successfully: ", savedCapturedImageUrl);
 
     res.status(200);
     res.send({ savedCapturedImageUrl });
   } catch (err) {
     res.status(400);
     res.send({ message: "Error" });
-    console.log("Error in captured image api");
+    console.error("Error in captured image api");
+  }
+});
+
+// updating deleteFor field..
+app.patch("/delete-message", async (req, res) => {
+  try {
+    const { msgId, deleteFor } = req.body;
+
+    // Find the message by its id.
+    const message = await ChatMessage.findOne({ id: msgId });
+
+    // Update the deleteFor field.
+    message.deleteFor = deleteFor;
+
+    // Save the updated document.
+    await message.save();
+
+    res.status(200);
+    res.send({ message: "Updated successfully" });
+
+    const updatedMessage = await ChatMessage.findOne({ id: msgId });
+  } catch (err) {
+    console.error("error while updating deleteFor field.");
   }
 });
 
@@ -417,8 +435,17 @@ io.on("connection", (socket) => {
   console.log(connectedUsers);
 
   socket.on("TextMessage", async (message, callback) => {
-    const { id, sentTo, sentBy, content, timestamp, type, delieveryStatus } =
-      message;
+    console.log("text message: ", message);
+    const {
+      id,
+      sentTo,
+      sentBy,
+      content,
+      timestamp,
+      type,
+      delieveryStatus,
+      deleteFor,
+    } = message;
 
     try {
       const newChatMessage = new ChatMessage({
@@ -429,11 +456,11 @@ io.on("connection", (socket) => {
         sentTo,
         type,
         delieveryStatus,
+        deleteFor,
       });
 
       // Adding message into database wether user is offline or online it doesn't matter.
       const savedMessage = await newChatMessage.save();
-      console.log("saved message", savedMessage);
 
       // Checking is sentTo user connected or not.
       if (connectedUsers[sentTo]) {
@@ -489,8 +516,14 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("NewMsgReaded", (newMessage) => {
+  socket.on("NewMsgReaded", async (newMessage) => {
     const { id, sentBy, sentTo } = newMessage;
+
+    const message = await ChatMessage.findOne({ id: id });
+
+    message.delieveryStatus = msgDelieveryStatusConstants.seen;
+    await message.save();
+
     console.log("Emitting back");
     io.to(connectedUsers[sentTo]).emit("NewMsgReaded", { msgId: id });
   });
@@ -521,28 +554,19 @@ io.on("connection", (socket) => {
       { $set: { delieveryStatus: msgDelieveryStatusConstants.seen } }
     );
 
+    console.log("updated Messages: ", updatedMessages);
     io.to(connectedUsers[to]).emit("iHaveSeenAllMessages", updatedMessages);
   });
 
   socket.on("typing", (msg) => {
     const { sentBy, sentTo, isTyping } = msg;
-    console.log(isTyping);
     io.to(connectedUsers[sentTo]).emit("typing", { sentBy, sentTo, isTyping });
   });
 
   socket.on("RecordedAudioMessage", async (message, callback) => {
-    console.log("Audio message recorded");
     try {
       const { id, content, timestamp, sentBy, sentTo, type, delieveryStatus } =
         message;
-
-      // const { uploaded_audio } = content;
-
-      // // convert base64 audio data to buffer
-      // const audioBuffer = Buffer.from(uploaded_audio, "base64");
-
-      // // Save the buffer to a file
-      // fs.writeFileSync(`uploads_audio/audio_${id}.wav`, audioBuffer);
 
       const newAudioMessage = new ChatMessage({
         id,
@@ -555,7 +579,6 @@ io.on("connection", (socket) => {
       });
 
       const savedAudioMessage = await newAudioMessage.save();
-      console.log(savedAudioMessage);
 
       if (connectedUsers[sentTo]) {
         // If user connected then message's delievery status is updating as sent.
@@ -608,13 +631,12 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       callback({ success: false, message: "Message not sent." });
-      console.log("Error while storing audio in the local system.", err);
+      console.error("Error while storing audio in the local system.", err);
     }
   });
 
   socket.on("recordingAudio", (msg) => {
     const { sentBy, sentTo, isRecordingAudio } = msg;
-    console.log(sentBy, sentTo, isRecordingAudio);
     io.to(connectedUsers[sentTo]).emit("recordingAudio", {
       sentBy,
       sentTo,
@@ -624,7 +646,6 @@ io.on("connection", (socket) => {
 
   socket.on("recordingVideo", (msg) => {
     const { sentBy, sentTo, isRecordingVideo } = msg;
-    console.log(sentBy, sentTo, isRecordingVideo);
     io.to(connectedUsers[sentTo]).emit("recordingVideo", {
       sentBy,
       sentTo,
@@ -648,7 +669,6 @@ io.on("connection", (socket) => {
       });
 
       const savedAudioMessage = await newAudioMessage.save();
-      console.log(savedAudioMessage);
 
       if (connectedUsers[sentTo]) {
         // If user connected then message's delievery status is updating as sent.
@@ -685,8 +705,6 @@ io.on("connection", (socket) => {
           { new: true } // Return the updated document.
         );
 
-        console.log(result);
-
         // checking wether status  has been changed or not.
         if (result) {
           console.log("Updated succesfuly offline", result);
@@ -701,7 +719,7 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       callback({ success: false, message: "Message not sent." });
-      console.log("Error in simple-audio ", err);
+      console.error("Error in simple-audio ", err);
     }
   });
 
@@ -721,7 +739,6 @@ io.on("connection", (socket) => {
       });
 
       const savedRecordedVideoMessage = await newRecordedVideoMessage.save();
-      console.log(savedRecordedVideoMessage);
 
       if (connectedUsers[sentTo]) {
         // If user connected then message's delievery status is updating as sent.
@@ -774,7 +791,7 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       callback({ success: false, message: "Message not sent." });
-      console.log("Error in recordedvideomessage.", err);
+      console.error("Error in recordedvideomessage.", err);
     }
   });
 
@@ -794,7 +811,6 @@ io.on("connection", (socket) => {
       });
 
       const savedSimpleImageMessage = await newSimpleImageMessage.save();
-      console.log(savedSimpleImageMessage);
 
       if (connectedUsers[sentTo]) {
         // If user connected then message's delievery status is updating as sent.
@@ -847,7 +863,7 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       callback({ success: false, message: "Message not sent." });
-      console.log("Error in recordedvideomessage.", err);
+      console.error("Error in recordedvideomessage.", err);
     }
   });
 
@@ -867,7 +883,6 @@ io.on("connection", (socket) => {
       });
 
       const savedSimpleVideoMessage = await newSimpleVideoMessage.save();
-      console.log(savedSimpleVideoMessage);
 
       if (connectedUsers[sentTo]) {
         // If user connected then message's delievery status is updating as sent.
@@ -920,7 +935,7 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       callback({ success: false, message: "Message not sent." });
-      console.log("Error in recordedvideomessage.", err);
+      console.error("Error in recordedvideomessage.", err);
     }
   });
 
@@ -940,7 +955,6 @@ io.on("connection", (socket) => {
       });
 
       const savedCapturedImageMessage = await newCapturedImageMessage.save();
-      console.log(savedCapturedImageMessage);
 
       if (connectedUsers[sentTo]) {
         // If user connected then message's delievery status is updating as sent.
@@ -993,7 +1007,7 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       callback({ success: false, message: "Message not sent." });
-      console.log("Error in captured image message socket.", err);
+      console.error("Error in captured image message socket.", err);
     }
   });
 
