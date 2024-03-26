@@ -51,12 +51,7 @@ server.listen(PORT, "0.0.0.0", () => {
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:3002",
-      "https://crazychat.netlify.app/",
-    ],
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
