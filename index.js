@@ -94,14 +94,14 @@ app.post("/register", async (req, res) => {
   // fs.writeFileSync(`reg_users/${email}_profile_image.png`, imageBuffer);
 
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, imageUrl } = req.body;
     const hashedPassword = await hash(password, 10);
 
     const newUser = new LoginOrRegisterModel({
       name,
       email,
       password: hashedPassword,
-      imageUrl: `reg_users/${email}_profile_image.png`,
+      imageUrl,
     });
 
     const savedUser = await newUser.save();
