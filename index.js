@@ -435,7 +435,7 @@ io.on("connection", (socket) => {
   console.log(connectedUsers);
 
   socket.on("TextMessage", async (message, callback) => {
-    console.log("text message: ", message);
+    console.log("text message event triggered: ", message);
     const {
       id,
       sentTo,
